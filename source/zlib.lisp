@@ -9,6 +9,12 @@
 (deftype operation-kind ()
   '(member :deflate :inflate))
 
+(deftype container-kind ()
+  '(member :raw :zlib :gzip))
+
+(deftype window-bits ()
+  '(integer 8 15))
+
 (defconstant +default-memory-level+ 8)
 (defconstant +default-buffer-size+ 4096)
 
@@ -129,11 +135,14 @@
   (cffi:make-shareable-byte-vector (ceiling (* (+ (- source-end source-start) 12) 1.01))))
 
 (defun make-deflate-z-stream (&key (level |Z_DEFAULT_COMPRESSION|) (method |Z_DEFLATED|)
-                                (window-bits |MAX_WBITS|) (with-zlib-header t) (memory-level +default-memory-level+)
+                                (window-bits |MAX_WBITS|) (container :zlib) (memory-level +default-memory-level+)
                                 (strategy |Z_DEFAULT_STRATEGY|))
-  (assert (<= 8 window-bits 15) () "WINDOW-BITS must be between 8 and 15. If you want a raw deflate stream, then see :WITH-ZLIB-HEADER.")
-  (unless with-zlib-header
-    (setf window-bits (- window-bits)))
+  (check-type window-bits window-bits "WINDOW-BITS must be between 8 and 15. See the CONTAINER argument for requesting raw, zlib, or gzip header/footers.")
+  (check-type container container-kind)
+  (setf window-bits (ecase container
+                      (:zlib (- window-bits))
+                      (:gzip (+ window-bits 16))
+                      (:raw window-bits)))
   (let ((stream (cffi:foreign-alloc '|z_stream|))
         (ok nil))
     (unwind-protect
@@ -156,10 +165,13 @@
   (cffi:foreign-free stream)
   (values))
 
-(defun make-inflate-z-stream (&key (window-bits |MAX_WBITS|) (with-zlib-header t))
-  (assert (<= 8 window-bits 15) () "WINDOW-BITS must be between 8 and 15. If you want a raw deflate stream, then see :WITH-ZLIB-HEADER.")
-  (unless with-zlib-header
-    (setf window-bits (- window-bits)))
+(defun make-inflate-z-stream (&key (window-bits |MAX_WBITS|) (container :zlib))
+  (check-type window-bits window-bits "WINDOW-BITS must be between 8 and 15. See the CONTAINER argument for requesting raw, zlib, or gzip header/footers.")
+  (check-type container container-kind)
+  (setf window-bits (ecase container
+                      (:zlib (- window-bits))
+                      (:gzip (+ window-bits 16))
+                      (:raw window-bits)))
   (let ((stream (cffi:foreign-alloc '|z_stream|))
         (ok nil))
     (unwind-protect
@@ -230,14 +242,14 @@ Pretty useless because DESTINATION must be long enough to hold the uncompressed 
           destination-end)))))
 
 (defun deflate (input-fn output-fn &key (buffer-size +default-buffer-size+) (level |Z_DEFAULT_COMPRESSION|)
-                                     (method |Z_DEFLATED|) (window-bits |MAX_WBITS|) (with-zlib-header t)
+                                     (method |Z_DEFLATED|) (window-bits |MAX_WBITS|) (container :zlib)
                                      (memory-level +default-memory-level+) (strategy |Z_DEFAULT_STRATEGY|))
   "See DEFLATE-SEQUENCE for usage."
   (%inflate-or-deflate
    :deflate
    (lambda ()
      (make-deflate-z-stream :level level :method method :window-bits window-bits
-                            :with-zlib-header with-zlib-header :memory-level memory-level
+                            :container container :memory-level memory-level
                             :strategy strategy))
    'free-deflate-z-stream
    input-fn
@@ -266,11 +278,11 @@ Pretty useless because DESTINATION must be long enough to hold the uncompressed 
                        (values)))
                    (alexandria:remove-from-plistf args :start :end)))))
 
-(defun inflate (input-fn output-fn &key (buffer-size +default-buffer-size+) (window-bits |MAX_WBITS|) (with-zlib-header t))
+(defun inflate (input-fn output-fn &key (buffer-size +default-buffer-size+) (window-bits |MAX_WBITS|) (container :zlib))
   (%inflate-or-deflate
    :inflate
    (lambda ()
-     (make-inflate-z-stream :window-bits window-bits :with-zlib-header with-zlib-header))
+     (make-inflate-z-stream :window-bits window-bits :container container))
    'free-inflate-z-stream
    input-fn
    output-fn
@@ -278,7 +290,7 @@ Pretty useless because DESTINATION must be long enough to hold the uncompressed 
 
 (defun inflate-sequence (compressed-bytes &key (start 0) (end (length compressed-bytes))
                                             (buffer-size +default-buffer-size+) (window-bits |MAX_WBITS|)
-                                            (with-zlib-header t))
+                                            (container :zlib))
   (check-type compressed-bytes sequence)
   (flet ((allocate-buffer (length)
            (make-array (* 2 length) :element-type '(unsigned-byte 8))))
@@ -301,4 +313,4 @@ Pretty useless because DESTINATION must be long enough to hold the uncompressed 
                            (values)))
                        :buffer-size buffer-size
                        :window-bits window-bits
-                       :with-zlib-header with-zlib-header)))))
+                       :container container)))))
