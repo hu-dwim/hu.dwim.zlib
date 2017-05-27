@@ -23,12 +23,7 @@
                               :package #:hu.dwim.zlib.ffi
                               :foreign-library-name "hu.dwim.zlib.ffi::zlib"
                               :foreign-library-spec ((t (:default "libz")))
-                              :include-sources (;;"bits/types\\.h$"
-                                                ;;"sys/types\\.h$"
-                                                ;;"stdint\\.h$"
-                                                ;;"errno\\.h$"
-                                                ;;"errno-base\\.h$"
-                                                "zlib\\.h$")
+                              :include-sources ("zlib\\.h$")
                               :exclude-sources :all
                               :include-definitions ("^voidp$"
                                                     "^voidpf$"
