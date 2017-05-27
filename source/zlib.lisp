@@ -134,15 +134,23 @@
 (defun allocate-compress-buffer (source &key (source-start 0) (source-end (length source)))
   (cffi:make-shareable-byte-vector (ceiling (* (+ (- source-end source-start) 12) 1.01))))
 
+(defun %encode-container (container window-bits)
+  (check-type window-bits window-bits "WINDOW-BITS must be between 8 and 15. See the CONTAINER argument for requesting raw, zlib, or gzip header/footers.")
+  (check-type container container-kind)
+  (ecase container
+    (:raw
+     ;; negative window-bits tells zlib not to add the header and the checksum in the footer: "In this case, -windowBits determines
+     ;; the window size. deflate() will then generate raw deflate data with no zlib header or trailer, and will not compute a check value."
+     (- window-bits))
+    (:gzip
+     (+ window-bits 16))
+    (:zlib
+     window-bits)))
+
 (defun make-deflate-z-stream (&key (level |Z_DEFAULT_COMPRESSION|) (method |Z_DEFLATED|)
                                 (window-bits |MAX_WBITS|) (container :zlib) (memory-level +default-memory-level+)
                                 (strategy |Z_DEFAULT_STRATEGY|))
-  (check-type window-bits window-bits "WINDOW-BITS must be between 8 and 15. See the CONTAINER argument for requesting raw, zlib, or gzip header/footers.")
-  (check-type container container-kind)
-  (setf window-bits (ecase container
-                      (:zlib (- window-bits))
-                      (:gzip (+ window-bits 16))
-                      (:raw window-bits)))
+  (setf window-bits (%encode-container container window-bits))
   (let ((stream (cffi:foreign-alloc '|z_stream|))
         (ok nil))
     (unwind-protect
@@ -166,12 +174,7 @@
   (values))
 
 (defun make-inflate-z-stream (&key (window-bits |MAX_WBITS|) (container :zlib))
-  (check-type window-bits window-bits "WINDOW-BITS must be between 8 and 15. See the CONTAINER argument for requesting raw, zlib, or gzip header/footers.")
-  (check-type container container-kind)
-  (setf window-bits (ecase container
-                      (:zlib (- window-bits))
-                      (:gzip (+ window-bits 16))
-                      (:raw window-bits)))
+  (setf window-bits (%encode-container container window-bits))
   (let ((stream (cffi:foreign-alloc '|z_stream|))
         (ok nil))
     (unwind-protect
