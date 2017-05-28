@@ -23,17 +23,10 @@
                               :package #:hu.dwim.zlib.ffi
                               :foreign-library-name "hu.dwim.zlib.ffi::zlib"
                               :foreign-library-spec ((t (:default "libz")))
-                              :include-sources ("zlib\\.h$")
+                              :include-sources ("zlib\\.h$"
+                                                "zconf\\.h$")
                               :exclude-sources :all
-                              :include-definitions ("^voidp$"
-                                                    "^voidpf$"
-                                                    "^uInt$"
-                                                    "^uIntf$"
-                                                    "^uLong$"
-                                                    "^uLongf$"
-                                                    "^MAX_WBITS$"
-                                                    "^MAX_MEM_LEVEL$"
-                                                    )
+                              :include-definitions ()
                               :exclude-definitions ())))))
 
 (defsystem :hu.dwim.zlib/fancy

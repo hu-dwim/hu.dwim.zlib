@@ -44,7 +44,7 @@
   (flet ((random-buffer-size ()
            (+ 8 (random 128))))
     (loop
-      :with min-window-bits = 8 ; this could be 8 theoretically (or 9, see zlib docs), but below 12 it triggers often. TODO maybe zlib bugs?
+      :with min-window-bits = 9 ; this could be 8 theoretically (or 9, see zlib docs), but 8 triggers a -3 rc from zlib
       :repeat repeat
       :for source = (make-random-ub8-vector 256)
       :for source-length = (length source)
