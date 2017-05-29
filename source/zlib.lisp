@@ -261,6 +261,7 @@ Pretty useless because DESTINATION must be long enough to hold the uncompressed 
 
 (defun deflate-sequence (source &rest args &key (start 0) (end (length source)) &allow-other-keys)
   (check-type source sequence)
+  (assert (<= start end))
   ;; this allocates a large enough output buffer where output is guaranteed to fit as per zlib docs
   (let ((compressed-bytes (allocate-compress-buffer source)))
     (values compressed-bytes
@@ -295,6 +296,7 @@ Pretty useless because DESTINATION must be long enough to hold the uncompressed 
                                             (buffer-size +default-buffer-size+) (window-bits |MAX_WBITS|)
                                             (container :zlib))
   (check-type compressed-bytes sequence)
+  (assert (<= start end))
   (flet ((allocate-buffer (length)
            (make-array (* 2 length) :element-type '(unsigned-byte 8))))
     (let ((decompressed-bytes (allocate-buffer (round (* 1.8 (length compressed-bytes))))))
