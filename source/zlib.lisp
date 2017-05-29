@@ -131,8 +131,8 @@
 ;;;;;;
 ;;; API
 
-(defun allocate-compress-buffer (source &key (source-start 0) (source-end (length source)))
-  (cffi:make-shareable-byte-vector (ceiling (* (+ (- source-end source-start) 12) 1.01))))
+(defun allocate-compress-buffer (source &key (start 0) (end (length source)))
+  (cffi:make-shareable-byte-vector (+ (ceiling (* (- end start) 1.01)) 64)))
 
 (defun %encode-container (container window-bits)
   (check-type window-bits window-bits "WINDOW-BITS must be between 8 and 15. See the CONTAINER argument for requesting raw, zlib, or gzip header/footers.")
