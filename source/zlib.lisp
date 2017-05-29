@@ -263,24 +263,30 @@ Pretty useless because DESTINATION must be long enough to hold the uncompressed 
   (check-type source sequence)
   (assert (<= start end))
   ;; this allocates a large enough output buffer where output is guaranteed to fit as per zlib docs
-  (let ((compressed-bytes (allocate-compress-buffer source)))
-    (values compressed-bytes
-            (apply 'deflate
-                   (let ((position start))
-                     (named-lambda deflate-sequence/input-fn
-                         (buffer buffer-start size)
-                       (let ((size (min size (- end position))))
-                         (assert (not (minusp size)))
-                         (replace buffer source :start1 buffer-start :end1 size :start2 position)
-                         (incf position size)
-                         size)))
-                   (let ((position 0))
-                     (named-lambda deflate-sequence/output-fn
-                         (buffer buffer-start size)
-                       (replace compressed-bytes buffer :start1 position :start2 buffer-start :end2 size)
+  (let* ((compressed-bytes (allocate-compress-buffer source :start start :end end))
+         (compressed-length
+          (apply 'deflate
+                 (let ((position start))
+                   (named-lambda deflate-sequence/input-fn
+                       (buffer buffer-start buffer-end)
+                     (let ((size (min (- buffer-end buffer-start)
+                                      (- end position))))
+                       (assert (not (minusp size)))
+                       (replace buffer source :start1 buffer-start :end1 (+ buffer-start size) :start2 position)
                        (incf position size)
-                       (values)))
-                   (alexandria:remove-from-plistf args :start :end)))))
+                       size)))
+                 (let ((position 0))
+                   (named-lambda deflate-sequence/output-fn
+                       (buffer buffer-start buffer-end)
+                     (let ((size (- buffer-end buffer-start)))
+                       (when (> size (+ (length compressed-bytes) position))
+                         (error "hu.dwim.zlib: not yet implemented: need to grow the output buffer"))
+                      (replace compressed-bytes buffer :start1 position :start2 buffer-start :end2 buffer-end)
+                      (incf position size))
+                     (values)))
+                 (alexandria:remove-from-plistf args :start :end))))
+    (assert (<= compressed-length (length compressed-bytes)))
+    (values compressed-bytes compressed-length)))
 
 (defun inflate (input-fn output-fn &key (buffer-size +default-buffer-size+) (window-bits |MAX_WBITS|) (container :zlib))
   (%inflate-or-deflate
@@ -303,18 +309,21 @@ Pretty useless because DESTINATION must be long enough to hold the uncompressed 
       (values decompressed-bytes
               (inflate (let ((position start))
                          (named-lambda inflate-sequence/input-fn
-                             (buffer buffer-start size)
-                           (let ((size (min size (- end position))))
+                             (buffer buffer-start buffer-end)
+                           (let ((size (min (- buffer-end buffer-start) (- end position))))
                              (assert (not (minusp size)))
-                             (replace buffer compressed-bytes :start1 buffer-start :end1 size :start2 position)
+                             (replace buffer compressed-bytes :start1 buffer-start :end1 buffer-end :start2 position)
                              (incf position size)
                              size)))
                        (let ((position 0))
                          ;; TODO reallocate output if not large enough
                          (named-lambda inflate-buffer/output-fn
-                             (buffer start size)
-                           (replace decompressed-bytes buffer :start1 position :start2 start :end2 size)
-                           (incf position size)
+                             (buffer buffer-start buffer-end)
+                           (let ((size (- buffer-end buffer-start)))
+                             (when (> size (+ (length compressed-bytes) position))
+                               (error "hu.dwim.zlib: not yet implemented: need to grow the output buffer"))
+                             (replace decompressed-bytes buffer :start1 position :start2 buffer-start :end2 buffer-end)
+                             (incf position size))
                            (values)))
                        :buffer-size buffer-size
                        :window-bits window-bits
