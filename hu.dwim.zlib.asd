@@ -56,4 +56,5 @@
   :components ((:module "test"
                 :components ((:file "package")
                              (:file "suite" :depends-on ("package"))
-                             (:file "zlib" :depends-on ("suite"))))))
+                             (:file "zlib" :depends-on ("suite"))
+                             (:file "random" :depends-on ("suite"))))))
