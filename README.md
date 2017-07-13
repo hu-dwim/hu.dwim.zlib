@@ -12,7 +12,7 @@ to automatically generate the CFFI definitions, so it's a (mostly)
 complete interface.
 
 zlib's gzip format can be used for
-[compressing HTTP responses](https://hub.darcs.net/hu.dwim/hu.dwim.web-server/browse/source/server/server.lisp#567)
+[compressing HTTP responses](https://hub.darcs.net/hu.dwim/hu.dwim.web-server/browse/source/server/server.lisp#571)
 to browsers.
 
 ## Who
@@ -26,9 +26,9 @@ The primary communication channel is the facilities on
 
 ## Status
 
-The raw FFI part is almost complete (modulo some *va_list* stuff). It works
+The raw FFI part is almost complete (except some *va_list* stuff). It works
 well enough to be used in
-[a web server](http://hub.darcs.net/hu.dwim/hu.dwim.web-server)
+[a web server](https://hub.darcs.net/hu.dwim/hu.dwim.web-server/browse/source/server/server.lisp#571)
 to compress responses.
 
 It doesn't (yet?) have any lispy extras over the raw zlib interface, but it
