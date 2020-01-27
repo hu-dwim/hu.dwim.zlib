@@ -22,7 +22,7 @@ Written by [attila@lendvai.name](mailto:attila@lendvai.name).
 ## Where
 
 The primary communication channel is the facilities on
-[the project's GitHub page](https://github.com/attila-lendvai/hu.dwim.zlib).
+[the project's GitHub page](https://github.com/hu-dwim/hu.dwim.zlib).
 
 ## Status
 
