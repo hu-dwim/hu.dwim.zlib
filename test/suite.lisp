@@ -5,9 +5,9 @@
 
 (defun make-ub8-vector/random-content (length &optional (mode :semi))
   (let ((vector (cffi:make-shareable-byte-vector length)))
-    ;; TODO when it's fulled up with random data it triggers errors with the :gzip container (probably because of overflowing)
     (ecase mode
       (:random
+       ;; TODO a vector, that is completely filled up with random data, triggers errors with the :gzip container. due to negative compression rate triggering an overflow?
        (loop
          :for index :from 0 :below length
          :do (setf (aref vector index) (random 255))
@@ -23,8 +23,8 @@
        t))
     vector))
 
-(defun make-ub8-vector/random-content-and-length (length &optional (mode :semi))
-  (make-ub8-vector/random-content (+ (/ length 2) (random length)) mode))
+(defun make-ub8-vector/random-content-and-length (approximate-length &optional (mode :semi))
+  (make-ub8-vector/random-content (+ (/ approximate-length 2) (random approximate-length)) mode))
 
 (defun vector-equal (v1 v2 &key (start1 0) (start2 0) (end1 (length v1)) (end2 (length v2)))
   (check-type start1 (integer 0))

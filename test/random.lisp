@@ -7,10 +7,10 @@
   (flet ((random-buffer-size ()
            (+ 8 (random 128))))
     (loop
-      :with min-window-bits = 9 ; this could be 8 theoretically (or 9, see zlib docs), but 8 triggers a -3 rc from zlib
+      :with min-window-bits = 9 ; this could be 8 theoretically (or 9? see zlib docs), but 8 triggers a -3 rc from zlib
       :for count :upfrom 1
       :repeat repeat
-      ;; the first 256 will have the exact size of 0..256, completely filled with random
+      ;; the first 256 random test vectors will have the exact size of 0..256, the rest will have their size also randomized
       :for source = (if (< count 256)
                         (make-ub8-vector/random-content count :random)
                         (make-ub8-vector/random-content-and-length 256))
@@ -22,6 +22,8 @@
       :for decompress-buffer-size = (random-buffer-size)
       :for start = (min source-length (random (max 1 (floor source-length 2))))
       :for end = (max start (- source-length (random (max 1 (floor source-length 8)))))
+      :do (when (zerop (mod count 1000))
+            (print count))
       :do (when (and (eq container :gzip)
                      (zerop level))
             ;; TODO this is probably a zlib bug
