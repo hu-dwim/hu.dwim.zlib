@@ -9,6 +9,7 @@
                :cffi
                :cffi/c2ffi
                :cffi-libffi)
+  :in-order-to ((test-op (test-op :hu.dwim.zlib/test)))
   :components ((:file "package-stage-1"
                 :pathname "source/package-stage-1")
                (:module "source"
@@ -53,6 +54,8 @@
                :hu.dwim.zlib
                ;; you probably also want to load :hu.dwim.stefil+swank one way or another
                )
+  :perform (test-op (o c) (funcall (intern (string '#:test)
+                                           (find-package :hu.dwim.zlib/test))))
   :components ((:module "test"
                 :components ((:file "package")
                              (:file "suite" :depends-on ("package"))
