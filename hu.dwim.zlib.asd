@@ -54,8 +54,10 @@
                :hu.dwim.zlib
                ;; you probably also want to load :hu.dwim.stefil+swank one way or another
                )
-  :perform (test-op (o c) (funcall (intern (string '#:test)
-                                           (find-package :hu.dwim.zlib/test))))
+  ;; Unfortunately ASDF swallows the return value (i.e. it cannot be
+  ;; inspected in Slime), so we at least print it.
+  :perform (test-op (o c) (print (funcall (intern (string '#:test)
+                                                  (find-package :hu.dwim.zlib/test)))))
   :components ((:module "test"
                 :components ((:file "package")
                              (:file "suite" :depends-on ("package"))
