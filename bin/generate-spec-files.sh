@@ -1,13 +1,19 @@
 #!/usr/bin/env bash
 #| -*- mode: lisp; coding: utf-8-unix -*-
 
+# This file is pretty generic, with only the following config:
+
+GUIX_PACKAGES="zlib"
+MAIN_GUIX_PACKAGE="zlib"
+
+# Constant part follows.
+
 #set -o xtrace
 
-PROJECT_NAME=hu.dwim.zlib
-
-SCRIPT_DIR=`dirname "$0"`
-SCRIPT_DIR=`readlink -f ${SCRIPT_DIR}`
-PROJECT_HOME=`readlink -f ${SCRIPT_DIR}/..`
+SCRIPT_DIR=$(dirname "$0")
+SCRIPT_DIR=$(readlink -f "${SCRIPT_DIR}")
+PROJECT_HOME=$(readlink -f "${SCRIPT_DIR}/..")
+PROJECT_NAME=${PROJECT_NAME:-$(basename "${PROJECT_HOME}"/*.asd .asd)}
 
 # For LIBRARY_PATH see:
 # https://gcc.gnu.org/onlinedocs/gcc/Environment-Variables.html#Environment-Variables
@@ -18,8 +24,7 @@ PROJECT_HOME=`readlink -f ${SCRIPT_DIR}/..`
 # More details in: https://github.com/cffi/cffi/pull/194
 if command -v guix &> /dev/null; then
   echo "Guix detected, entering the environment."
-  PACKAGES_FOR_SDL=""
-  eval $(guix shell --pure --search-paths c2ffi zlib libffi jq pkg-config sbcl --development zlib)
+  eval $(guix shell --pure --search-paths c2ffi ${GUIX_PACKAGES} libffi jq pkg-config sbcl --development ${MAIN_GUIX_PACKAGE})
   export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:+${LD_LIBRARY_PATH}:}${LIBRARY_PATH}"
   echo "Setting LD_LIBRARY_PATH based on LIBRARY_PATH to ${LD_LIBRARY_PATH}"
 fi
@@ -29,6 +34,8 @@ LISP=sbcl
 cd "${PROJECT_HOME}"
 
 echo "*** "`date`" Generating c2ffi spec files for ${PROJECT_NAME} in ${PROJECT_HOME}"
+
+rm c2ffi-spec/*.spec
 
 BUILD_LOG_FILE="/tmp/${PROJECT_NAME}.build-log"
 
@@ -59,7 +66,7 @@ echo "*** "`date`" About to filter the generated c2ffi spec files for ${PROJECT_
 
 ${SCRIPT_DIR}/filter-spec-files.sh
 
-echo "*** "`date`" About to run the tests again for ${PROJECT_NAME}"
+echo "*** "`date`" About to run the tests for ${PROJECT_NAME}"
 
 ${LISP} --noinform --end-runtime-options --no-sysinit --no-userinit \
         --eval "(require :asdf)" --eval "(asdf:load-system :asdf)" \
@@ -81,7 +88,7 @@ exit 0
         (or #+quicklisp (ql:dist-version "quicklisp")
             "n/a"))
 
-(ql:quickload '(:cffi/c2ffi :cffi/c2ffi-generator :split-sequence
+(ql:quickload '(:cffi/c2ffi :cffi/c2ffi-generator :split-sequence :alexandria
                 ;; need to quickload :hu.dwim.asdf explicitly, otherwise i get:
                 ;; Component "hu.dwim.asdf" not found, required by NIL
                 :hu.dwim.asdf))
@@ -126,8 +133,6 @@ exit 0
 ;; (setf cffi/c2ffi::*trace-c2ffi* t)
 ;; (trace cffi/c2ffi::ensure-spec-file-is-up-to-date
 ;;        cffi/c2ffi::generate-spec-with-c2ffi)
-
-(cffi/c2ffi:generate-spec *project-name*)
 
 (asdf:load-system *project-name*)
 

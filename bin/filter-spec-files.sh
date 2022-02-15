@@ -11,6 +11,7 @@ queries=(
     # fashion, i.e. it is sensitive to the order of the definitions
     # (e.g. it filters out struct fields whose type hasn't been seen
     # yet).
+    # TODO delete the 'location' key for smaller diff's
     '[.[] | select(.location | contains("/types.h") or contains("/stdint-uintn.h") or contains("/stdint-intn.h") or contains("/stddef.h") or contains("zlib.h") or contains("zconf.h"))]'
 )
 
