@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 #| -*- mode: lisp; coding: utf-8-unix -*-
 
 #set -o xtrace
@@ -8,6 +8,21 @@ PROJECT_NAME=hu.dwim.zlib
 SCRIPT_DIR=`dirname "$0"`
 SCRIPT_DIR=`readlink -f ${SCRIPT_DIR}`
 PROJECT_HOME=`readlink -f ${SCRIPT_DIR}/..`
+
+# For LIBRARY_PATH see:
+# https://gcc.gnu.org/onlinedocs/gcc/Environment-Variables.html#Environment-Variables
+# `guix shell --development foo` sets this variable to the profile's lib/ directory
+# that contains the .so files.
+# Note that timing matters: "If, at *the time that the program was started*, the
+# environment variable LD_LIBRARY_PATH was defined to contain..."
+# More details in: https://github.com/cffi/cffi/pull/194
+if command -v guix &> /dev/null; then
+  echo "Guix detected, entering the environment."
+  PACKAGES_FOR_SDL=""
+  eval $(guix shell --pure --search-paths c2ffi zlib libffi jq pkg-config sbcl --development zlib)
+  export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:+${LD_LIBRARY_PATH}:}${LIBRARY_PATH}"
+  echo "Setting LD_LIBRARY_PATH based on LIBRARY_PATH to ${LD_LIBRARY_PATH}"
+fi
 
 LISP=sbcl
 
@@ -29,7 +44,7 @@ if [ ! -e "build/quicklisp/setup.lisp" ] ; then
     ${LISP} --noinform --end-runtime-options --no-sysinit --no-userinit \
             --eval "(require :asdf)" --eval "(asdf:load-system :asdf)" \
             --load "build/quicklisp.lisp" \
-            --eval '(quicklisp-quickstart:install :path "build/quicklisp/" :dist-url "http://beta.quicklisp.org/dist/quicklisp/2021-04-11/distinfo.txt")' \
+            --eval '(quicklisp-quickstart:install :path "build/quicklisp/" :dist-url "http://beta.quicklisp.org/dist/quicklisp/2021-12-30/distinfo.txt")' \
             --eval '(quit)'
 fi
 
@@ -66,7 +81,10 @@ exit 0
         (or #+quicklisp (ql:dist-version "quicklisp")
             "n/a"))
 
-(ql:quickload '(:cffi/c2ffi :cffi/c2ffi-generator :split-sequence))
+(ql:quickload '(:cffi/c2ffi :cffi/c2ffi-generator :split-sequence
+                ;; need to quickload :hu.dwim.asdf explicitly, otherwise i get:
+                ;; Component "hu.dwim.asdf" not found, required by NIL
+                :hu.dwim.asdf))
 
 (defpackage :build-tmp
   (:use :common-lisp
@@ -86,20 +104,31 @@ exit 0
         :collect "--sys-include"
         :collect el))
 
-(appendf cffi/c2ffi::*c2ffi-extra-arguments*
-         (nix-includes->c2ffi-args))
+(cond
+  ;; NixOS
+  ((uiop:getenv "NIX_CFLAGS_COMPILE")
+   (appendf cffi/c2ffi::*c2ffi-extra-arguments*
+            (nix-includes->c2ffi-args))
 
-;; KLUDGE this is an enormous kludge that is only needed on nixos
-;; because there clang is a wrapper script that defines some extra
-;; include paths. see https://github.com/rpav/c2ffi/pull/89
-(appendf cffi/c2ffi::*c2ffi-extra-arguments*
-         (list "--sys-include"
-               "/nix/store/kaicsq9mskqvs7ww03rpz7cbjiwamh8i-glibc-2.31-dev/include"))
+   ;; KLUDGE this is an enormous kludge that is only needed on nixos
+   ;; because there clang is a wrapper script that defines some extra
+   ;; include paths. see https://github.com/rpav/c2ffi/pull/89
+   (appendf cffi/c2ffi::*c2ffi-extra-arguments*
+            (list "--sys-include"
+                  "/nix/store/kaicsq9mskqvs7ww03rpz7cbjiwamh8i-glibc-2.31-dev/include")))
+  ;; Guix
+  ((uiop:getenv "GUIX_ENVIRONMENT")
+   (appendf cffi/c2ffi::*c2ffi-extra-arguments*
+            (list "--sys-include"
+                  (concatenate 'string (uiop:getenv "GUIX_ENVIRONMENT")
+                               "/include/")))))
 
 ;; (setf cffi/c2ffi::*trace-c2ffi* t)
 ;; (trace cffi/c2ffi::ensure-spec-file-is-up-to-date
 ;;        cffi/c2ffi::generate-spec-with-c2ffi)
 
-(asdf:test-system *project-name*)
+(cffi/c2ffi:generate-spec *project-name*)
+
+(asdf:load-system *project-name*)
 
 (uiop:quit)

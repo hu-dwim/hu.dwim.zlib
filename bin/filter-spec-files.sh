@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 # https://stedolan.github.io/jq/manual/
 
@@ -16,8 +16,10 @@ queries=(
 
 for i in "${!patterns[@]}"; do
     for file in ${patterns[$i]}; do
-        echo "Running jq --sort-keys '${queries[$i]}' ${file}"
-        jq --sort-keys "${queries[$i]}" ${file} >${file}.filtered
-        mv ${file}.filtered ${file}
+        if [ -e ${file} ]; then # avoid creating a 'zlib.*.spec' if it didn't match anything
+            echo "Running jq --sort-keys '${queries[$i]}' ${file}"
+            jq --sort-keys "${queries[$i]}" ${file} >${file}.filtered
+            mv ${file}.filtered ${file}
+        fi
     done
 done
