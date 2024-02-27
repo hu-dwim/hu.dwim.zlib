@@ -203,11 +203,11 @@
                                       (level |Z_DEFAULT_COMPRESSION|))
   "A simpler API for the stream based DEFLATE.
 
-Compress the first SOURCE-START bytes of SOURCE into DESTINATION. DESTINATION should be an array of (unsigned-byte 8), and should be large enough to hold the compressed contents. ALLOCATE-COMPRESS-BUFFER can be used to allocate a proper buffer.
+Compress the (SOURCE-START, SOURCE-END) bytes of SOURCE into DESTINATION. DESTINATION should be a vector of (unsigned-byte 8), and should be large enough to hold the compressed contents. ALLOCATE-COMPRESS-BUFFER can be used to allocate an appropriate buffer.
 
-Note that the size of the DESTINATION array should be at least 0.1% more than the souce plus 12 bytes, but the actual number of array elements filled in by the compression algorithm will usually be smaller (depending on how 'predictable' the input data is).
+Note that the size of the DESTINATION array should be at least 0.1% larger than the souce plus 12 bytes, but the actual number of array elements filled in by the compression algorithm will usually be smaller.
 
-Returns DESTINATION-END i.e. compressed length if DESTINATION-START was zero."
+Returns DESTINATION-END, which is the compressed length when DESTINATION-START is zero."
   (check-type source ub8-vector)
   (check-type destination (or null ub8-vector))
   (cffi:with-foreign-object (compressed-length '|uLongf|)
